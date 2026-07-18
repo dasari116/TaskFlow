@@ -49,7 +49,8 @@ export default function TaskForm({ task, onClose, onSave }) {
         ...(isEditMode && { status }), // include status only if editing
       };
 
-      const url = isEditMode ? `/tasks/${task.id}` : '/tasks';
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const url = isEditMode ? `${apiBase}/tasks/${task.id}` : `${apiBase}/tasks`;
       const method = isEditMode ? 'PUT' : 'POST';
 
       const token = localStorage.getItem('token');

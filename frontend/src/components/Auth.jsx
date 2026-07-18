@@ -36,7 +36,8 @@ export default function Auth({ onAuthSuccess }) {
     setLoading(false);
     try {
       setLoading(true);
-      const url = isLogin ? '/login' : '/register';
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const url = isLogin ? `${apiBase}/login` : `${apiBase}/register`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

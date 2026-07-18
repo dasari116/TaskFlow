@@ -59,7 +59,8 @@ export default function App() {
       if (priorityFilter !== 'All') queryParams.append('priority', priorityFilter);
       queryParams.append('sortBy', sortBy);
 
-      const response = await fetch(`/tasks?${queryParams.toString()}`, {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiBase}/tasks?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -94,7 +95,8 @@ export default function App() {
   const handleToggleStatus = async (task) => {
     try {
       const newStatus = task.status === 'Pending' ? 'Completed' : 'Pending';
-      const response = await fetch(`/tasks/${task.id}`, {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiBase}/tasks/${task.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +119,8 @@ export default function App() {
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
     try {
-      const response = await fetch(`/tasks/${taskId}`, {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiBase}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
