@@ -1,78 +1,58 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import dns from 'dns';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Fix Node.js 18+ SRV lookup bug on Windows where IPv6 defaults block Atlas SRV lookups
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database at:', dbPath);
-    db.serialize(() => {
-      // Enable foreign keys
-      db.run('PRAGMA foreign_keys = ON;');
-
-      // Create users table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `, (err) => {
-        if (err) console.error('Error creating users table:', err.message);
-      });
-
-      // Create tasks table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS tasks (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          description TEXT,
-          status TEXT NOT NULL CHECK(status IN ('Pending', 'Completed')) DEFAULT 'Pending',
-          priority TEXT NOT NULL CHECK(priority IN ('High', 'Medium', 'Low')) DEFAULT 'Medium',
-          due_date TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `, (err) => {
-        if (err) console.error('Error creating tasks table:', err.message);
-      });
-    });
+export const connectDB = async () => {
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) {
+    console.error('Error: MONGODB_URI environment variable is missing.');
+    process.exit(1);
   }
+  try {
+    console.log('Connecting to MongoDB...');
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    console.log('Connected to MongoDB successfully.');
+  } catch (err) {
+    console.error('Error connecting to MongoDB:', err.message);
+    process.exit(1);
+  }
+};
+
+// Users Schema
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password_hash: { type: String, required: true },
+  created_at: { type: Date, default: Date.now }
 });
 
-// Helper functions wrapper to use Promises
-export const query = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
+// Configure Virtuals for frontend 'id' compatibility
+userSchema.virtual('id').get(function () {
+  return this._id.toHexString();
+});
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 
-export const queryOne = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-};
+// Tasks Schema
+const taskSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  status: { type: String, enum: ['Pending', 'Completed'], default: 'Pending' },
+  priority: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium' },
+  due_date: { type: String, required: true },
+  created_at: { type: Date, default: Date.now }
+});
 
-export const run = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
-    });
-  });
-};
+// Configure Virtuals for frontend 'id' compatibility
+taskSchema.virtual('id').get(function () {
+  return this._id.toHexString();
+});
+taskSchema.set('toJSON', { virtuals: true });
+taskSchema.set('toObject', { virtuals: true });
 
-export default db;
+export const User = mongoose.model('User', userSchema);
+export const Task = mongoose.model('Task', taskSchema);
