@@ -9,7 +9,9 @@
     "install-all": "npm install && npm run install:backend && npm run install:frontend",
     "server": "npm run start --prefix backend",
     "client": "npm run dev --prefix frontend",
-    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\""
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\"",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -1,16 +1,25 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { run, query, queryOne } from './db.js';
 import { hashPassword, comparePassword, generateToken, authenticateToken } from './auth.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React frontend build
+const frontendDistPath = path.resolve(__dirname, '../frontend/dist');
+app.use(express.static(frontendDistPath));
 
 // Validation helpers
 const isValidEmail = (email) => {
@@ -233,6 +242,11 @@ app.delete('/tasks/:id', authenticateToken, async (req, res) => {
     console.error('Delete task error:', err.message);
     res.status(500).json({ error: 'Failed to delete task.' });
   }
+});
+
+// Fallback for SPA client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(frontendDistPath, 'index.html'));
 });
 
 // Start server
